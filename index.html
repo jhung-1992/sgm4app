@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="description" content="協同準則測考系統">
+    <title>協同準則測考系統 - 離線專業版</title>
+    <style>
+        /* ================= 核心重置與本機字體 ================= */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            /* 優先使用微軟正黑體或蘋果系統字體，無需下載網路字型 */
+            font-family: "PingFang TC", "Microsoft JhengHei", "Helvetica Neue", Helvetica, Arial, sans-serif; 
+            background-color: #f1f5f9; 
+            color: #334155;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* ================= 捲軸美化 ================= */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        html { scroll-behavior: smooth; }
+
+        /* ================= 佈局與共用元件 ================= */
+        .app-container {
+            display: flex; flex-direction: column; height: 100vh; overflow-y: auto;
+            max-width: 32rem; margin: 0 auto; background-color: #f8fafc;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        .app-container.exam-mode { max-width: 56rem; background-color: #ffffff; }
+        .app-container.result-mode { max-width: 56rem; background-color: #f1f5f9; }
+        
+        .p-6 { padding: 1.5rem; } .py-12 { padding-top: 3rem; padding-bottom: 3rem; }
+        .mb-10 { margin-bottom: 2.5rem; } .mb-8 { margin-bottom: 2rem; }
+        .mb-4 { margin-bottom: 1rem; } .mt-4 { margin-top: 1rem; }
+        .text-center { text-align: center; }
+        .flex { display: flex; } .flex-col { display: flex; flex-direction: column; }
+        .items-center { align-items: center; } .justify-between { justify-content: space-between; }
+        .justify-center { justify-content: center; }
+        .gap-3 { gap: 0.75rem; } .gap-5 { gap: 1.25rem; } .gap-10 { gap: 2.5rem; }
+        .flex-1 { flex: 1; }
+
+        /* ================= 文字樣式 ================= */
+        .font-black { font-weight: 900; } .font-bold { font-weight: 700; }
+        .text-xs { font-size: 0.75rem; } .text-sm { font-size: 0.875rem; }
+        .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+        .text-2xl { font-size: 1.5rem; line-height: 2rem; }
+        .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+        .text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
+        .text-slate-400 { color: #94a3b8; } .text-slate-500 { color: #64748b; }
+        .text-slate-700 { color: #334155; } .text-slate-800 { color: #1e293b; }
+        .text-white { color: #ffffff; } .text-indigo-600 { color: #4f46e5; }
+        .tracking-widest { letter-spacing: 0.1em; } .uppercase { text-transform: uppercase; }
+
+        /* ================= UI 元件 (按鈕/卡片/輸入框) ================= */
+        .icon-box {
+            width: 5rem; height: 5rem; background-color: #0f172a; border-radius: 1.5rem;
+            margin: 0 auto 1rem auto; display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 2.25rem; font-weight: 900; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .btn {
+            width: 100%; display: block; border: none; cursor: pointer; text-align: center;
+            transition: all 0.2s; font-family: inherit; outline: none;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-primary {
+            background-color: #4f46e5; color: white; padding: 0.875rem; border-radius: 1.25rem;
+            font-weight: 900; font-size: 0.875rem; box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
+        }
+        .btn-primary:hover { background-color: #4338ca; }
+        .btn-start {
+            background-color: #0f172a; color: white; padding: 1.5rem; border-radius: 2.5rem;
+            font-weight: 900; text-transform: uppercase; letter-spacing: 0.3em; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            margin-top: auto;
+        }
+        .btn-submit { background-color: #4338ca; color: white; padding: 1.5rem; border-radius: 2rem; font-weight: 900; letter-spacing: 0.1em;}
+        
+        .config-card {
+            background: white; padding: 1.25rem; border-radius: 1.5rem; border: 2px solid #e2e8f0;
+            margin-bottom: 1rem; transition: all 0.2s; opacity: 0.5;
+        }
+        .config-card.active { border-color: #4f46e5; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); transform: scale(1.02); opacity: 1; }
+        
+        input[type="text"] {
+            width: 100%; background: #f8fafc; color: #334155; padding: 0.75rem 1rem;
+            border-radius: 0.75rem; font-weight: 700; border: 1px solid transparent; outline: none;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); font-family: inherit; margin-top: 0.5rem;
+        }
+        input[type="text"]:focus { border-color: #a5b4fc; box-shadow: 0 0 0 2px #e0e7ff; background: white; }
+        
+        input[type="checkbox"] { width: 1.25rem; height: 1.25rem; accent-color: #4f46e5; cursor: pointer; }
+
+        .info-box { background: #eef2ff; border: 1px solid #e0e7ff; padding: 0.75rem; border-radius: 0.75rem; font-size: 0.6875rem; color: #64748b; line-height: 1.6; margin-bottom: 1rem;}
+        .info-box code { background: white; padding: 0.125rem 0.375rem; border-radius: 0.25rem; color: #6366f1; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); }
+
+        textarea {
+            width: 100%; padding: 1.5rem; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 2.5rem;
+            outline: none; font-weight: 700; font-size: 1.25rem; line-height: 2; font-family: inherit;
+            resize: none; overflow: hidden; box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); transition: all 0.2s;
+        }
+        textarea:focus { border-color: #818cf8; background: white; }
+
+        /* ================= 測驗與結果 UI ================= */
+        .exam-header { padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: white; z-index: 10; }
+        .exam-item { border-bottom: 4px solid #f8fafc; padding-bottom: 3rem; margin-bottom: 3rem; }
+        .exam-item:last-child { border-bottom: none; }
+        .badge { background: #0f172a; color: white; font-size: 0.5625rem; font-weight: 900; padding: 0.25rem 0.625rem; border-radius: 0.25rem; text-transform: uppercase; }
+        
+        .result-header { padding: 1.5rem; background: white; border-bottom: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; position: sticky; top: 0; z-index: 30; }
+        .nav-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; background: #f8fafc; padding: 0.75rem; border-radius: 1rem; border: 1px solid #f1f5f9; max-height: 8rem; overflow-y: auto; max-width: 40rem; width: 100%; }
+        .nav-dot { width: 2rem; height: 2rem; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.75rem; cursor: pointer; transition: transform 0.2s; border: none; }
+        .nav-dot:hover { transform: scale(1.1); }
+        .nav-dot.correct { background: #dcfce3; color: #16a34a; }
+        .nav-dot.wrong { background: #ef4444; color: white; box-shadow: 0 0 0 2px #fecaca; }
+
+        .result-card { background: white; padding: 1.5rem; border-radius: 2.5rem; border: 2px solid #e2e8f0; margin-bottom: 2rem; scroll-margin-top: 10rem; }
+        .result-card.correct { border-color: #bbf7d0; opacity: 0.6; }
+        .result-card.wrong { border-color: #fca5a5; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        
+        .diff-added { background-color: #fecaca; color: #b91c1c; text-decoration: line-through; padding: 0 2px; }
+        .diff-removed { background-color: #bbf7d0; color: #15803d; font-weight: 900; padding: 0 2px; }
+        
+        .ans-box { padding: 1.25rem; border-radius: 1.5rem; margin-bottom: 1rem; }
+        .ans-box.red { background: #fef2f2; border: 1px solid #fee2e2; }
+        .ans-box.gray { background: #f8fafc; border: 1px solid #f1f5f9; }
+        .ans-title { font-size: 0.625rem; font-weight: 900; color: #94a3b8; margin-bottom: 0.5rem; text-transform: uppercase; }
+        
+        .footer-action { padding: 2rem 1.5rem 3rem 1.5rem; background: white; border-top: 1px solid #e2e8f0; display: flex; gap: 1rem; }
+        .btn-retry { flex: 2.5; background: #b91c1c; color: white; padding: 1.25rem; border-radius: 2rem; font-weight: 900; text-transform: uppercase; border: none; cursor: pointer; }
+        .btn-menu { flex: 1; background: #f1f5f9; color: #64748b; padding: 1.25rem; border-radius: 2rem; font-weight: 900; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script>
+        // ==========================================
+        // 核心資料庫 (已更新為最新100題)
+        // ==========================================
+        const MASTER_DATA = {
+            "陸軍作戰要綱(115年)": [
+                { id: 1, q: "現代戰場用兵，應置重點於何處?", a: "戰場用兵，應置重點於打擊敵指管系統，破壞聯合作戰關鍵結構，摧毀敵作戰重心，繼以殲滅敵人有生力量。" },
+                { id: 2, q: "戰爭型態發展為何?", a: "戰爭已朝非接觸、非對稱、非線性型態發展，主要體現在 「多領域作戰」、「混合式作戰」等多樣化戰爭型態模式。" },
+                { id: 3, q: "聯合作戰之意義", a: "統合運用兩個（含）以上不同軍種或不同領域之作戰單位陸上、水面（下）、空中、電磁、網路、太空等在明確的指揮管制關係下，執行共同任務，為達成同一作戰目的，所遂行之作戰，不論其階層與指揮關係如何，均謂之聯合作戰。" },
+                { id: 4, q: "兵種協同作戰成功基礎", a: "統一指揮、充分協調與合作、即時有效指揮管制，為遂行協 同作戰成功的基礎與必備條件。" },
+                { id: 5, q: "勤務支援一般原則為何?", a: "1、後勤為先。2、先期整備。3、運輸安全。4、決心須以勤務能力為基礎。" },
+                { id: 6, q: "戰術性電子戰區分為合?", a: "1、電子戰攻擊。2、電子戰防護。3、電子戰支援。" },
+                { id: 7, q: "政治作戰特性為何?", a: "1、以人為中心。2、以智慧取勝。3、無時空限制。4、重視戰場經營。" },
+                { id: 8, q: "軍事動員區分為何?", a: "1、軍隊動員。2、軍需工業動員。" },
+                { id: 9, q: "計畫動員種類有哪些?", a: "1、部隊動員。2、輔助軍事勤務人力動員。" },
+                { id: 10, q: "防衛編組意義為何?", a: "旨在因應防衛作戰需要，分別賦予作戰任務及責任地區，以 統合地區內各部隊戰力，達成作戰目的。" },
+                { id: 11, q: "指揮之意義為何?", a: "依法授予某個人以掌握與運用軍隊之職責，該個人將其意志變成所屬部隊之行動。" },
+                { id: 12, q: "指揮關係之區分?", a: "1、建制。2、編配。3、配屬。4、作戰管制。" },
+                { id: 13, q: "指揮所之區分為?", a: "1、主指揮所。2、後方指揮所。3、機動指揮所。4、預備指揮所。" },
+                { id: 14, q: "指揮所位置選定考量因素為何?", a: "1、便於指揮掌握，並適應戰況之推移。2、與上下級及友軍連絡容易。3、進出、變換容易，且有足夠之疏散空間。4、有利於警戒、隱（掩）蔽、防空及化生放核防護措施。5、各種通信、資訊設施建立容易。" },
+                { id: 15, q: "指揮掌握之必要手段?", a: "1、命令。2、通報。3、報告。" },
+                { id: 16, q: "何謂決心?", a: "乃由指揮官與參謀依狀況判斷而產生之結論，須由指揮官親自為之，為發展作戰構想之基礎，各級幹部應以堅強之意志貫徹。" },
+                { id: 17, q: "部隊掌握之基礎為何?", a: "1、統一戰術思想。2、示以明確作戰構想。3、賦予明確任務與作戰企圖。4、周密靈活通資連絡。5、下級指揮官適切之獨斷專行。" },
+                { id: 18, q: "影響戰局之手段為何?", a: "1、適時將火力重點指向所望地區。2、適切使用預備隊。3、彈性調整部署。4、靈活轉移兵力，促進作戰進展。" },
+                { id: 19, q: "何謂交戰規則?", a: "交戰規則係於承平、作戰期間之法律規範，用以提供各級指揮官管理軍事行動上之運用，並藉各式任務使全體軍官、士、兵理解交戰規則概念，在共通性理解基礎上，擬定作戰計畫，執行軍事行動，俾確立部隊使用武力之合法性與正當性。" },
+                { id: 20, q: "聯合作戰管制之範圍為何?", a: "1、戰術行動。2、火力運用。3、後勤支援。4、政治作戰。5、其他足以危害安全之非軍事行動。" },
+                { id: 21, q: "聯合作戰管制方式為何?", a: "1、計畫管制。2、臨機管制。" },
+                { id: 22, q: "聯合作戰管制指導為何?", a: "1、確保聯合作戰各部隊作戰計畫、戰術行動及火力運用等，在時空因素上能配合一致、不相抵觸。2、明確律定部隊行動時間管制表，並督導確實 執行。3、訂定適切之辨別、辨識規定及相互間之通報管道。4、互派連絡官。" },
+                { id: 23, q: "空地作戰管制一般原則為何?", a: "1、區分主從、分層負責。2、周密協調、確實管制。" },
+                { id: 24, q: "地面作戰管制方式為何?", a: "1、計畫管制。2、臨機管制。3、協調後管制。" },
+                { id: 25, q: "何謂計畫管制", a: "依據作戰計畫中各階段行動，對所管制部隊兵力之運用、時間因素配合及所望戰果，實施嚴密管制。" },
+                { id: 26, q: "何謂臨機管制?", a: "對新發現徵候，足以影響戰局或危害部隊安全者，應即修（增）訂計畫，並實施必要管制。" },
+                { id: 27, q: "地面火力管制安全措施?", a: "禁射線、火力支援協調線、自由射擊區、限制射擊線、火力協調區、禁射區、協調射擊線。" },
+                { id: 28, q: "空域管制安全措施為何?", a: "1、限制射擊空域。2、限航區。3、空中安全走廊。" },
+                { id: 29, q: "掌握主動之具體作為為何?", a: "1、迅確的情報。2、適切的判斷。3、優勢的作為。4、全程作戰構想之儘早確立及謀略。5、欺敵之配合。" },
+                { id: 30, q: "逐次抵抗意義與目的為何?", a: "逐次抵抗係沿敵軍進攻路線，利用充分之縱深地區、地形，構成數帶陣地或據點，交互實施抵抗與轉進之作戰。其目的主在避免決戰，儘量保存戰力，以空間換取時間，消耗與遲滯敵軍，並藉連續不斷有限目標攻擊、伏擊與襲擊，予敵最大損害。" },
+                { id: 31, q: "逐次抵抗方式區分為何?", a: "逐次抵抗方式區分數帶陣地逐次抵抗、大縱深多據點逐次抵抗等兩種。數帶陣地逐次抵抗又區分連續陣地、交替陣地逐次抵抗兩種。" },
+                { id: 32, q: "防衛作戰特性為何?", a: "1、獨立性。2、被動性。3、總體性。4、後發性。5、遲滯性。6、不對稱性。" },
+                { id: 33, q: "地面防衛作戰成功條件為何?", a: "1、周密整備。2、全民防衛。3、戰力防護。4、灘岸及要域火殲。5、連續作戰。" },
+                { id: 34, q: "聯合國土防衛作戰基本概念為何?", a: "1、獨立守備。2、分區削弱。3、灘岸及要域火殲。4、縱深防禦。" },
+                { id: 35, q: "地面防衛作戰核心概念為何?", a: "持久作戰。" },
+                { id: 36, q: "戰備整備之目的?", a: "目的在堅實戰備，奠定防衛作戰成功之基礎，並能肆應不預期之狀況。" },
+                { id: 37, q: "防衛作戰計畫區分為何?", a: "戰備整備計畫、應變制變計畫、動員計畫、應急（聯合）作戰計畫及全面（聯合）作戰計畫。" },
+                { id: 38, q: "作戰計畫之策訂考慮因素為何?", a: "作戰計畫之策定係依據上一級任務及構想（指導）所策定， 應考慮任務、敵情、地形與天氣、我軍狀況及民情等因素。" },
+                { id: 39, q: "作戰計畫修訂時機為何?", a: "1、依既定期程修訂。2、作戰型態、戰術、戰法改變時。3、軍隊組織編裝調整或武器裝備更新時。4、敵情、地形、地物產生變化時。5、計畫經演練發現缺失時。" },
+                { id: 40, q: "動員編實一般指導為何?", a: "1、擬訂動員計畫，增強整體與持續戰力。2、建立軍（民）專業技術人員名冊，因應未來作戰需求。3、力求動員地與任務一致。4、主動聯繫、確實核對，落實「編、管、訓、用」合一。5、力求動員結合編制專長，以適材適用。" },
+                { id: 41, q: "留置作戰之目的為何?", a: "其目的在牽制、分散與遲滯敵軍行動，癱瘓其指揮、交通與後勤體系，削弱士氣與作戰節奏，策應我主力逆襲與規復行動。" },
+                { id: 42, q: "阻絕系統區分為何?", a: "1、阻絕區。2、阻絕帶。3、阻絕群。" },
+                { id: 43, q: "縱深防禦之意義為何?", a: "縱深防禦係指地形條件與敵軍前進方向，於灘後2至4公里至淺山丘陵間廣域區域內，運運地形特性建築多道防禦陣地與預想殲敵區，並結合主戰、守備、後備等兵力，遂行分層阻敵、逐次打擊之作戰行動。" },
+                { id: 44, q: "跨區增援作戰指揮與管制之原則為何?", a: "1、任務統一、權責分明。2、通連暢通、資訊共享。3、行動一致、機動適時。4、戰場交接、責任明確。" },
+                { id: 45, q: "戰力重整之程序為何?", a: "1、人員整備。2、裝備補充。3、精神重建。4、整後再訓。5、接續部署。" }
+            ],
+            "陸軍指揮參謀組織與作業教範": [
+                { id: 1, q: "何謂指揮關係?", a: "指揮官基於權責，對被指揮者所產生之責任關係，謂之指揮關係。" },
+                { id: 2, q: "何謂支援關係?", a: "支援關係明示支援與被支援部隊（單位）間之關係與責任。" },
+                { id: 3, q: "簡報分類為何?", a: "1、任務簡報（含反向簡報、確認簡報）。2、戰場簡報(演習簡報)。3、業務簡報(含資料簡報)。4、參謀簡報。" },
+                { id: 4, q: "戰場簡報（演習簡報）內容為何?", a: "1、單位、級職、姓名。2、方向、地形及位置介紹。3、本單位任務及作戰構想。4、敵、我軍作戰經過概要。5、當前狀況及決心、處置。6、建議事項。" },
+                { id: 5, q: "持續判斷須包含事項為何？", a: "1、事實。2、假定事項。3、我（友）軍狀況。4、敵軍活動與能力。5、民事考量事項。6、結論與建議。" },
+                { id: 6, q: "敵可能行動列舉時應包括哪些？", a: "1、何時(開始行動時間)。2、何地(採取行動之地區)。3、何事(作戰或戰鬥方式與重點指向)。4、如何(採取行動之兵力大小)。" },
+                { id: 7, q: "指參作業程序之階段劃分？", a: "區分為「計畫作為」、「準備」與「執行」等三個階段。" },
+                { id: 8, q: "指揮程序之內容?", a: "1、任務分析及初步作戰概念。2、參謀作業指導。3、狀況判斷。4、決心及作戰構想。5、計畫與命令。6、督導實施。" },
+                { id: 9, q: "軍事決策程序之步驟為何？", a: "1、受領任務。2、任務分析。3、研擬行動方案。4、分析行動方案。5、比較行動方案。6、核准行動方案。7、頒布計畫(命令)。" },
+                { id: 10, q: "軍事決策程序之重要作為之機制？", a: "1、召開作戰會議（簡報）。2、指揮官對參謀實施作業指導。3、下達預備命令。" },
+                { id: 11, q: "預備命令(第一次)之內容應包括哪些事項?", a: "1、當前狀況與任務。2、作戰方式及作戰地區範圍。3、初步時間管制。4、部隊先期運動及偵搜指導。5、重要作戰準備事項與要求標準。6、其他重要準備事項。" },
+                { id: 12, q: "指揮官初步參謀作業指導之內容為何?", a: "1、任務說明。2、初步指揮官作戰企圖與作戰概念宣達。3、上級指揮官企圖之特別指示。4、完成任務所應先期準備事項。5、各參狀況判斷指導（含戰場情報準備作業）。6、律定召開作戰會議之時間、地點。7、其他事項。" },
+                { id: 13, q: "受領任務後之作業步驟？", a: "1、將狀況與任務，通知各參謀與作業人員。2、參謀持續資料蒐整。3、參謀完成資訊更新。4、指揮官行初步參謀作業指導。5、研擬預備命令。" },
+                { id: 14, q: "任務分析之意義為何?", a: "「任務分析」乃指揮官藉參謀之協助，對上級賦予之任務，實施深入理解之過程。" },
+                { id: 15, q: "任務分析後產生之作業成果主要包含哪些？", a: "1、戰場情報準備作業成果。2、各部隊之作戰能力與限制因素。3、風險評估事項。4、核定本部任務。5、指揮官初步作戰企圖與參謀作業指導。6、預備命令。7、行動方案評估要項。" },
+                { id: 16, q: "任務分析後之戰場情報準備作業成果為何?", a: "1、修正後混合障礙透明圖（地形對敵我作戰行動影響分析表）。2、天候對敵我作戰行動影響分析表。3、敵可能行動圖解及戰術運用分析表4、徵候圖解及徵候分析表。5、情報判斷結論部分。" },
+                { id: 17, q: "何謂特定行動？", a: "由上級賦予、指派交由本單位執行之任務者，皆為「特定行動」。" },
+                { id: 18, q: "何謂關鍵行動？", a: "綜合分析特定行動與推斷行動之必然性、重要性、時序性與限制因素等後，即可歸納得出攸關本次作戰成敗之「關鍵行動」。" },
+                { id: 19, q: "風險種類區分？", a: "1、戰術風險。2、意外風險。" },
+                { id: 20, q: "實施任務分析簡報後指揮官需完成哪些事項，以利後續作業？", a: "1、核准「本部任務」。2、宣示其初步「指揮官作戰企圖」與研擬行動方案評估要項之指導。3、宣達後續之「參謀作業指導」。" },
+                { id: 21, q: "指揮官擬定作戰企圖內心思維為何?", a: "1、上級指揮官作戰企圖。2、本部行動與全般作戰關係。3、為圓滿達成任務所應獲取之戰果。4、多重目標與多重任務之主從。5、為達成任務之必要手段。" },
+                { id: 22, q: "行動方案應具備之特性為何？", a: "1、一致性。2、可行性。3、可接受性。4、獨特性。 5、完整性。" },
+                { id: 23, q: "研擬行動方案之步驟為何？", a: "1、分析敵、我相對戰力。  2、研擬各種行動方案選項。3、初步規劃各行動方案所需兵力及部署。4、研擬各行動方案作戰構想。5、律定各行動方案任務編組。6、完成各行動方案文字敘述及圖解。" },
+                { id: 24, q: "分析行動方案之意義為何？", a: "藉由「分析行動方案」可檢視出我軍至當行動與最佳兵力編組，方能以最低損耗，獲致最大戰果，達成任務，並對爾後戰局開創有利態勢。" },
+                { id: 25, q: "決心點為何？", a: "係指在作戰任務執行中，需要下達處置作為有關之「重 大事件」與兵、火力調整或危機及契機其所在「地點」，亦係指揮官或參謀預期必須下達決心之時、空 （時機）點。 " },
+                { id: 26, q: "分析行動方案推演中，參謀必須針對每項敵可能行動列舉何事項?", a: "1、重大事件2、決心點" },
+                { id: 27, q: "決心點可依據何預判?", a: "可依據作戰「經驗」與「效程」先行預判，然後再於推演時驗證，以判定下達決心之時間與地點。" },
+                { id: 28, q: "評估要項為何？", a: "係指在推演過程中，用以衡量行動方案作戰效能之項目，而該等要項將可能影響敵、我雙方作戰成敗之關鍵。" },
+                { id: 29, q: "分析行動方案推演模式為何?", a: "1、帶狀法。2、區塊法。3、條狀法。" },
+                { id: 30, q: "分析行動方案推演之過程運作為何?", a: "乃遵循「行動」－「反應」－「反制」之循環而運作。" },
+                { id: 31, q: "分析行動方案推演成果為何?", a: "1、決心支援圖解2、協同計畫管制表3、決心支援表" },
+                { id: 32, q: "決心簡報時使用何向指揮官實施簡報?", a: "1、決心支援圖解（含決心支援表）2、協同計畫管制表3、行動方案比較表" },
+                { id: 33, q: "預演的形式概分為何?", a: "1、全裝預演。2、減裝預演。3、沙盤推演。4、圖上推演。5、無線電預演。6、電腦兵棋推演。" },
+                { id: 34, q: "快速決策與同步程序（RDSP）作業步驟為何？", a: "1、瞭解當前狀況與預期之差異。 2、決定採取何種決心類型與行動。 3、修訂行動方案。 4、確認行動方案與下達作戰指導。 5、頒布作戰命令。" },
+                { id: 35, q: "時間受限下指參作業程序節省時間之具體作為？", a: "1、以既有計畫為基礎。2、增加指揮官親自參與程度。3、指揮官下達更明確之參謀作業指導。4、指揮官限制行動方案數量與兵棋推演次數。5、強化同步計畫作為。6、善用參謀作業指導。" }
+            ],
+            "陸軍戰場情報準備作業教範": [
+                { id: 1, q: "戰場情報準備作業程序為何？", a: "1、界定戰場空間。2、分析作戰地區。3、評估敵軍威脅。4、研判敵可能行動。" },
+                { id: 2, q: "何謂「作戰地區」？", a: "作戰地區乃是使部隊在一個被指定範圍內，遂行上級所分 配之作戰行動；作戰地區幅員大小，須在上級指定區域範圍內，部隊指揮官依據所賦予之權責，指揮所屬部隊（含配屬及作戰管制），統一運用整合戰力，對抗敵軍，爭取勝利，達成任務。" },
+                { id: 3, q: "何謂「利害地區」？", a: "利害地區乃基於敵情偵蒐與情報預警，其範圍包括作戰地 區與其鄰接地區，並延伸至敵我兵（火）力可涵蓋之區域。" },
+                { id: 4, q: "地形分析中，地形五大要素為何?", a: "障礙、接近路線、觀測與射擊、隱蔽與掩蔽、地形要點。" },
+                { id: 5, q: "何謂障礙？", a: "障礙乃指地面任何天然或人為之地形、地物，足以妨礙觀測、射擊、部隊運動者均屬之。" },
+                { id: 6, q: "何謂接近路線？", a: "供某一適當大小與類型之部隊，以通達地形要點或目標之適切而便利的運動空間，稱為接近路線。" },
+                { id: 7, q: "依何步驟分析接近路線？", a: "1、組合各機動走廊為接近路線。2、標繪接近路線。3、評估接近路線。4、賦予各接近路線編號。" },
+                { id: 8, q: "何謂地形要點？", a: "地形要點即任一地點或地區其攻占或固守，對敵我雙方任一方，具有顯著利益者。地形要點對於任務的完成具有決定性的影響則稱之為關鍵地形。" },
+                { id: 9, q: "何謂高價值目標？", a: "高價值目標係指敵軍指揮官為達成任務所需之主要作戰部隊（單位）。" },
+                { id: 10, q: "何謂高效益目標？", a: "係我軍達成任務，應摧毀之主要戰力，敵軍失去此一目標後，可有利我軍任務之達成。" }
+            ],
+            "聯合兵種營作戰教範": [
+                {  id: 1, q: "攻擊時重點指向為何", a: "1、敵未預期之正面。2、便於我戰力發揮，而不利於敵戰力發揮之處。3、敵之側翼、配備間隙、部隊接合部。4、敵素質低劣部隊。" },
+                { id: 2, q: "聯合兵種營攻擊正面為何", a: "營之攻擊正面主依第一線展開之連級部隊數量、偵蒐距離及支援火力所涵蓋的範圍來決定，通常概約為２,０００～６,０００公尺。" },
+                { id: 3, q: "攻擊中,足以左右戰局之手段為何?", a: "1、適時有效集中火力。2、即時投入預備隊。3、親臨第一線領導攻擊。" },               
+                { id: 4, q: "突穿攻擊區分那些階段?", a: "1、造成突破口。2、擴大突破口。3、奪取最後目標。" },
+                { id: 5, q: "包圍攻擊區分那些階段?", a: "1、完成包圍圈。2、壓縮包圍圈。3、分割擊滅。" },
+                { id: 6, q: "追擊階段區分為何?", a: "1、戰場追擊。2、縱隊追擊。" },
+                { id: 7, q: "防禦意義與目的為何?", a: "防禦係藉兵、火力與地形等之利用，拒止、消耗及摧破敵之攻擊，確保防禦地區、爭取時間或待增援部隊到達，以利全般與爾後之作戰。" },
+                { id: 8, q: "防禦一般要領為何?", a: "1、善用地形。2、爭取主動。3、形成重點。4、縱深配置。5、火力殲敵。" },
+                { id: 9, q: "聯合兵種營防禦正面及縱深為何?", a: "營防禦正面通常為２,０００～４,０００公尺，縱深為２,０００～３,０００公尺。" },
+                { id: 10, q: "陣地防禦意義與目的為何?", a: "陣地防禦係以主力部署於主陣地帶，依火力及逆襲，殲滅敵於陣地前或陣地內，以確保防禦地區完整之防禦方式。" }
+            ]
+        };
+
+        // ==========================================
+        // 系統狀態 (State)
+        // ==========================================
+        const state = {
+            view: 'menu', // 'menu', 'exam', 'result'
+            isRandom: true,
+            configs: {
+                "陸軍作戰要綱(115年)": { enabled: true, customInput: "", max: 45 },
+                "陸軍指揮參謀組織與作業教範": { enabled: true, customInput: "", max: 35 },
+                "陸軍戰場情報準備作業教範": { enabled: true, customInput: "", max: 10 },
+                "聯合兵種營作戰教範": { enabled: true, customInput: "", max: 10 }
+            },
+            examPool: [],
+            userAnswers: {},
+            results: []
+        };
+
+        // ==========================================
+        // 演算法與資料處理函式
+        // ==========================================
+        const parseInputToIndices = (inputStr, max) => {
+            if (!inputStr || inputStr.trim() === "") {
+                return Array.from({ length: max }, (_, i) => i + 1);
+            }
+            let str = inputStr.replace(/[，、。.]/g, ',').replace(/[~～]/g, '-');
+            let parts = str.split(',').map(s => s.trim()).filter(s => s !== "");
+            let indices = new Set();
+            parts.forEach(part => {
+                if (part.includes('-')) {
+                    let [start, end] = part.split('-');
+                    let s = parseInt(start), e = parseInt(end);
+                    if (!isNaN(s) && !isNaN(e)) {
+                        let min = Math.max(1, Math.min(s, e)), maxVal = Math.min(max, Math.max(s, e));
+                        for (let i = min; i <= maxVal; i++) indices.add(i);
+                    }
+                } else {
+                    let val = parseInt(part);
+                    if (!isNaN(val) && val >= 1 && val <= max) indices.add(val);
+                }
+            });
+            return Array.from(indices).sort((a, b) => a - b);
+        };
+
+        const VerbatimNormalize = (str) => {
+            if (!str) return "";
+            let s = str.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
+            return s.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
+        };
+
+        const computeDiff = (user, target) => {
+            const u = Array.from(user), t = Array.from(target);
+            const dp = Array(u.length + 1).fill().map(() => Array(t.length + 1).fill(0));
+            for (let i = 1; i <= u.length; i++) {
+                for (let j = 1; j <= t.length; j++) {
+                    if (u[i-1] === t[j-1]) dp[i][j] = dp[i-1][j-1] + 1;
+                    else dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+                }
+            }
+            const res = [];
+            let i = u.length, j = t.length;
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && u[i-1] === t[j-1]) { res.unshift({ type: 'match', char: u[i-1] }); i--; j--; } 
+                else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) { res.unshift({ type: 'removed', char: t[j-1] }); j--; } 
+                else { res.unshift({ type: 'added', char: u[i-1] }); i--; }
+            }
+            return res;
+        };
+
+        // ==========================================
+        // 渲染引擎 (Render Engine)
+        // ==========================================
+        const appDiv = document.getElementById('app');
+
+        function setView(newView) {
+            state.view = newView;
+            window.scrollTo(0, 0);
+            render();
+        }
+
+        function render() {
+            appDiv.className = 'app-container custom-scrollbar';
+            if (state.view === 'menu') renderMenu();
+            else if (state.view === 'exam') renderExam();
+            else if (state.view === 'result') renderResult();
+        }
+
+        // --- 主選單畫面 ---
+        function renderMenu() {
+            let configHtml = '';
+            Object.keys(state.configs).forEach(cat => {
+                const cfg = state.configs[cat];
+                configHtml += `
+                    <div class="config-card ${cfg.enabled ? 'active' : ''}">
+                        <div class="flex justify-between items-center ${cfg.enabled ? 'mb-4' : ''}">
+                            <label class="flex items-center gap-3" style="cursor:pointer;">
+                                <input type="checkbox" onchange="toggleConfig('${cat}', this.checked)" ${cfg.enabled ? 'checked' : ''}>
+                                <span class="font-black text-sm">${cat}</span>
+                            </label>
+                            <span class="text-xs font-black text-slate-400" style="background:#f8fafc; padding:2px 8px; border-radius:999px;">共 ${cfg.max} 題</span>
+                        </div>
+                        ${cfg.enabled ? `<input type="text" placeholder="請輸入題號，留空代表全選" value="${cfg.customInput}" oninput="updateConfigInput('${cat}', this.value)">` : ''}
+                    </div>
+                `;
+            });
+
+            appDiv.innerHTML = `
+                <div class="p-6 py-12 flex-col" style="flex:1;">
+                    <div class="text-center mb-10">
+                        <div class="icon-box">考</div>
+                        <h1 class="text-2xl font-black text-slate-800" style="letter-spacing:-0.05em;">協同準則測考系統</h1>
+                        <p class="text-slate-400 text-xs mt-4 font-black uppercase tracking-widest">OFFLINE NATIVE VERSION</p>
+                    </div>
+                    
+                    <div class="mb-8">
+                        <h2 class="text-sm font-black text-slate-400 mb-4 tracking-widest uppercase">快速選擇</h2>
+                        <button class="btn btn-primary" onclick="applyAll()">全部範圍 (清除自訂條件)</button>
+                    </div>
+
+                    <div class="mb-8">
+                        <h2 class="text-sm font-black text-slate-400 mb-4 tracking-widest uppercase">詳細範圍自訂</h2>
+                        <div class="info-box">
+                            <span style="color:#4f46e5; font-weight:900;">💡 支援格式：</span><br/>
+                            • 範圍：<code>1~45</code> 或 <code>1-45</code><br/>
+                            • 挑選：<code>1,3,5</code> 或用 <code>、</code> <code>.</code> 分隔<br/>
+                            • 混合：<code>1-10, 15, 20-25</code><br/>
+                            (若該項目打勾但留空，則系統預設為全選)
+                        </div>
+                        ${configHtml}
+                    </div>
+
+                    <div style="margin-top:auto; padding-bottom:1rem;">
+                        <label class="flex items-center justify-center gap-3" style="cursor:pointer; background:white; padding:1rem; border-radius:1.5rem; border:2px solid #e2e8f0; margin-bottom:1.5rem;">
+                            <input type="checkbox" onchange="state.isRandom = this.checked" ${state.isRandom ? 'checked' : ''}>
+                            <span class="font-black text-sm tracking-widest text-slate-700">隨機出題 (隨機打亂題號)</span>
+                        </label>
+                        <button class="btn btn-start" onclick="startExam()">Start Examination</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- 測驗畫面 ---
+        function renderExam() {
+            appDiv.className = 'app-container exam-mode custom-scrollbar';
+            let examHtml = '';
+            
+            state.examPool.forEach((item, idx) => {
+                examHtml += `
+                    <div class="exam-item">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="badge">${item.category}</span>
+                            <span class="text-xs font-black text-slate-400">第 ${idx + 1} 題 / 共 ${state.examPool.length} 題</span>
+                        </div>
+                        <h2 class="text-2xl font-black text-slate-800 mb-8" style="line-height:1.6;">${item.q}</h2>
+                        <textarea rows="1" 
+                            oninput="updateAnswer('${item.uKey}', this); this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';" 
+                            placeholder="請輸入答案 (自動忽略所有標點符號與空白)...">${state.userAnswers[item.uKey] || ""}</textarea>
+                    </div>
+                `;
+            });
+
+            appDiv.innerHTML = `
+                <div class="exam-header">
+                    <button class="btn" style="width:auto; padding:0.25rem 0.75rem; background:#f1f5f9; border-radius:0.5rem; font-weight:900; font-size:0.625rem; text-transform:uppercase; color:#94a3b8; letter-spacing:0.1em;" onclick="setView('menu')">Quit</button>
+                    <div style="font-size:0.75rem; font-weight:900; background:#f1f5f9; padding:0.375rem 1rem; border-radius:999px;">題數：${state.examPool.length}</div>
+                    <div style="width:40px;"></div>
+                </div>
+                <div style="flex:1; overflow-y:auto; padding:2rem; padding-bottom:5rem;" class="custom-scrollbar">
+                    ${examHtml}
+                    <div class="text-center text-slate-400 font-black tracking-widest text-xs uppercase py-12 opacity-50">— END OF LIST —</div>
+                </div>
+                <div style="padding:1.5rem; background:white; border-top:1px solid #e2e8f0; z-index:20;">
+                    <button class="btn btn-submit" onclick="submitExam()">交卷批改 (Submit All)</button>
+                </div>
+            `;
+            
+            // 初始化 textarea 高度
+            setTimeout(() => {
+                document.querySelectorAll('textarea').forEach(el => {
+                    el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px';
+                });
+            }, 0);
+        }
+
+        // --- 批改結果畫面 ---
+        function renderResult() {
+            appDiv.className = 'app-container result-mode custom-scrollbar';
+            const wrongs = state.results.filter(r => !r.isCorrect);
+            const correctCount = state.results.length - wrongs.length;
+            
+            let navHtml = state.results.map((r, idx) => `
+                <button class="nav-dot ${r.isCorrect ? 'correct' : 'wrong'}" title="前往第 ${idx + 1} 題" onclick="document.getElementById('result-card-${idx}').scrollIntoView({ behavior: 'smooth', block: 'start' });">
+                    ${idx + 1}
+                </button>
+            `).join('');
+
+            let cardsHtml = state.results.map((r, idx) => {
+                const diff = computeDiff(VerbatimNormalize(r.userRaw), r.targetClean);
+                let diffHtml = diff.map(d => {
+                    if (d.type === 'added') return `<span class="diff-added">${d.char}</span>`;
+                    if (d.type === 'removed') return `<span class="diff-removed">${d.char}</span>`;
+                    return `<span>${d.char}</span>`;
+                }).join('');
+
+                return `
+                    <div id="result-card-${idx}" class="result-card ${r.isCorrect ? 'correct' : 'wrong'}">
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="flex items-center gap-3">
+                                <span class="badge" style="background:#f1f5f9; color:#94a3b8;">ITEM ${idx+1}</span>
+                                <span class="badge" style="background:${r.isCorrect ? '#dcfce3' : '#fef2f2'}; color:${r.isCorrect ? '#16a34a' : '#dc2626'};">${r.category} Q${r.id}</span>
+                            </div>
+                            <span class="font-black text-sm uppercase" style="color:${r.isCorrect ? '#22c55e' : '#ef4444'};">${r.isCorrect ? '✓ Correct' : '✗ Wrong'}</span>
+                        </div>
+                        <p class="text-xl font-black text-slate-800 mb-6" style="line-height:1.6;">${r.q}</p>
+                        ${!r.isCorrect ? `
+                            <div class="ans-box red">
+                                <p class="ans-title" style="color:#f87171;">文字比對結果 (紅:多寫, 綠:漏寫) - 已忽略標點符號</p>
+                                <div class="text-xl font-black" style="line-height:1.8; word-break:break-all; color:#1e293b;">${diffHtml}</div>
+                            </div>
+                            <div class="ans-box gray">
+                                <p class="ans-title">標準解答原文</p>
+                                <p class="text-xl font-black text-slate-600" style="line-height:1.8; white-space:pre-wrap;">${r.a}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            let footerBtnHtml = wrongs.length > 0 
+                ? `<button class="btn-retry" onclick="retryWrong()">針對錯誤題下一輪 (僅剩餘題)</button>`
+                : `<button class="btn-retry" style="background:#4f46e5;" onclick="setView('menu')">全數通過！完成練習</button>`;
+
+            appDiv.innerHTML = `
+                <div class="result-header">
+                    <h2 class="text-2xl font-black text-slate-900 mb-4 uppercase tracking-widest">自動批改清單</h2>
+                    <div class="flex justify-center gap-10 mb-6 w-full">
+                        <div class="flex-col items-center flex"><span class="ans-title">Correct</span><span class="text-3xl font-black" style="color:#16a34a;">${correctCount}</span></div>
+                        <div class="flex-col items-center flex"><span class="ans-title">Wrong</span><span class="text-3xl font-black" style="color:#dc2626;">${wrongs.length}</span></div>
+                    </div>
+                    <div class="nav-dots custom-scrollbar">${navHtml}</div>
+                </div>
+                <div style="flex:1; overflow-y:auto; padding:2rem;" class="custom-scrollbar">
+                    ${cardsHtml}
+                    <div style="height:4rem;"></div>
+                </div>
+                <div class="footer-action">
+                    <button class="btn-menu" onclick="setView('menu')">MENU</button>
+                    ${footerBtnHtml}
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // 互動控制函式 (Actions)
+        // ==========================================
+        window.toggleConfig = (cat, isChecked) => { state.configs[cat].enabled = isChecked; renderMenu(); };
+        window.updateConfigInput = (cat, val) => { state.configs[cat].customInput = val; };
+        window.updateAnswer = (key, el) => { state.userAnswers[key] = el.value; };
+        
+        window.applyAll = () => {
+            Object.keys(state.configs).forEach(cat => {
+                state.configs[cat].enabled = true;
+                state.configs[cat].customInput = "";
+            });
+            renderMenu();
+        };
+
+        window.startExam = (customList = null) => {
+            let pool = [];
+            if (customList) {
+                pool = [...customList];
+            } else {
+                Object.keys(state.configs).forEach(cat => {
+                    const cfg = state.configs[cat];
+                    if (cfg.enabled && MASTER_DATA[cat]) {
+                        const targetIds = parseInputToIndices(cfg.customInput, cfg.max);
+                        targetIds.forEach(id => {
+                            const item = MASTER_DATA[cat].find(q => q.id === id);
+                            if (item) {
+                                pool.push({
+                                    ...item, category: cat, targetClean: VerbatimNormalize(item.a),
+                                    uKey: `q-${cat}-${item.id}-${Math.random().toString(36).substr(2, 9)}`
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+            
+            if (pool.length === 0) return alert("範圍內無題目！請檢查輸入格式。");
+            if (state.isRandom) pool.sort(() => 0.5 - Math.random());
+
+            state.examPool = pool;
+            state.userAnswers = {};
+            state.results = [];
+            setView('exam');
+        };
+
+        window.submitExam = () => {
+            state.results = state.examPool.map(item => {
+                const uRaw = state.userAnswers[item.uKey] || "";
+                const uClean = VerbatimNormalize(uRaw);
+                return { ...item, userRaw: uRaw, isCorrect: uClean === item.targetClean };
+            });
+            setView('result');
+        };
+
+        window.retryWrong = () => {
+            const wrongs = state.results.filter(r => !r.isCorrect).map(r => ({
+                id: r.id, q: r.q, a: r.a, category: r.category, targetClean: r.targetClean, uKey: `q-${r.category}-${r.id}-${Math.random()}`
+            }));
+            startExam(wrongs);
+        };
+
+        // 啟動應用程式
+        render();
+    </script>
+</body>
+</html>
+
